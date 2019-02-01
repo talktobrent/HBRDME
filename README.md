@@ -12,7 +12,7 @@ Generates HTML based README from raw Holberton project html files
 - READMEs are saved in a child tree from the user HOME location: ```$HOME/<REPO>/<DIRECTORY>```, which corresponds with Github locations of each parsed project
 - Upon, completion, total number of successful projects is printed, as well as the total number of failed projects
 ### Options
-- ```-b``` ```-blind```: Run without launching browser to verify README content
+- ```-b``` ```-blind```: Run without launching browser and prompting to verify README content
 - ```-f``` ```-force```: Force parsing of all projects saved in ```projects/``` (Existing READMEs will be overwritten)
 - ```-h``` ```-help```: Print help
 ### Pending features:
