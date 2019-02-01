@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Holberton School README parser
+
+B=false
+H=false
+F=false
+count=0
+fail=0
+
+# Checks args
+for arg in "$@"; do
+	case "$arg" in
+		"-blind"	) B=true;;
+		"-b"		) B=true;;
+		"-h"		) H=true;;
+		"-help"		) H=true;;
+		"-force"	) F=true;;
+		"-f"		) F=true;;
+#		"-user"		) shift; U="$arg"
+#		"-pass"		) shift; P="$arg"
+	esac
+done
+
+if [ "$H" = true ]; then
+	echo "Place html of project pages in $(pwd)/projects directory"
+	echo "Flags: -blind (-b) : run without verifying each README created"
+	echo "       -force (-f) : force parse all projects and ignore passed log"
+	echo "       -help (-h)  : print help"
+	exit 1
+fi
+
+touch -a passed
+mkdir -p projects
+if [ -z "$(ls projects/)" ]; then
+	echo "No projects to parse."
+	exit 1
+elif [ "$B" = true ]; then
+	echo "Running blind..."
+fi
+
+for project in projects/*; do
+	if [ "$F" = false ] && grep -Fxq "$project" passed; then
+		continue;
+	fi
+
+	# gets title
+	grep -m 1 'class="gap"' "$project" | sed 's/ class="gap"//' > README.md
+
+	# gets what you should learn
+	awk '/<p>At the end of this project, /,/<\/ul>$/' "$project" | sed -E -e 's/<(a[^>]*|\/a)>//g' >> README.md
+
+	# adds task header
+	echo "<h2>Tasks</h2>" >> README.md
+
+	# gets tasks
+	sed -E -n -e '/<h4 class="task">/,/<!-- Button test code -->/{ /<h4 class="task">/,/<\/h4>/s/h4/h3/; /<h3 class="task">/,/<!-- Task URLs -->/p; s/<li>(File: <code>.*<\/code>)<\/li>/<p>\1<\/p>/p}' "$project" | \
+		sed -E -e '/<div /,/<\/div>/d' \
+			-e '/<span /,/<\/span>/d' \
+			-e '/<!-- Progress vs Score -->/,/<!-- Task Body -->/d' \
+			-e '/<!-- Task URLs -->/d' \
+			-e 's/<(a[^>]*|\/a)>//g' \
+			-e 's/<(iframe[^>]*|\/iframe)>//g' \
+			-e 's/<img[^>]*>//g' \
+			-e 's/<br[^>]*>//g' \
+			-e '/<pre/,/<\/pre>/d' \
+			-e '/^\s*(<\/?p>)*$/d' \
+			-e 's/ class=".*"//' >> README.md
+
+	# shows result
+	if [ "$B" = false ]; then
+		grip -b
+		# prompt to see if good
+		echo -n "README Good? "
+		read -r yn
+		case $yn in 
+			[Nn]* ) let fail++ ; continue
+		esac
+	fi
+	
+	# create directories and move
+	repo=$(sed -e 's/<[^>]*>//g' "$project" | grep -P -m 1 'GitHub repository: ' | awk '{print $NF}')
+	direct=$(sed -e 's/<[^>]*>//g' "$project" | grep -P -m 1 'Directory: \d*x\d*' | awk '{print $NF}')
+	mkdir -p "$HOME/$repo/$direct"
+	mv README.md "$HOME/$repo/$direct/README.md"
+
+	echo "$project" >> passed
+	let count++
+done
+echo "Done."
+echo "$count new projects parsed, and $fail failed"
